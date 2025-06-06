@@ -1,0 +1,12 @@
+/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/obj/Debug/net9.0/SilentRemote.Common.csproj.AssemblyReference.cache
+/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/obj/Debug/net9.0/SilentRemote.Common.GeneratedMSBuildEditorConfig.editorconfig
+/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/obj/Debug/net9.0/SilentRemote.Common.AssemblyInfoInputs.cache
+/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/obj/Debug/net9.0/SilentRemote.Common.AssemblyInfo.cs
+/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/obj/Debug/net9.0/SilentRemote.Common.csproj.CoreCompileInputs.cache
+/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/bin/Debug/net9.0/SilentRemote.Common.deps.json
+/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/bin/Debug/net9.0/SilentRemote.Common.dll
+/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/bin/Debug/net9.0/SilentRemote.Common.pdb
+/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/obj/Debug/net9.0/SilentRemote.Common.dll
+/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/obj/Debug/net9.0/refint/SilentRemote.Common.dll
+/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/obj/Debug/net9.0/SilentRemote.Common.pdb
+/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/obj/Debug/net9.0/ref/SilentRemote.Common.dll

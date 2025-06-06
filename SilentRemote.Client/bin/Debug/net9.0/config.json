@@ -1,0 +1,8 @@
+{
+  "ClientId": "test-client-1",
+  "RelayUrl": "wss://relay.nextcloudcyber.com",
+  "ServerId": "test-server-1",
+  "AuthToken": "test-token",
+  "HideOnStartup": false,
+  "AutoStartWithSystem": false
+}

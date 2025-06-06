@@ -1,0 +1,248 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:SilentRemote.Server.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+        x:Class="SilentRemote.Server.UI.MainWindow"
+        Title="SilentRemote Server Console"
+        MinWidth="900" MinHeight="600">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <DockPanel>
+        <!-- Top Menu -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File">
+                <MenuItem Header="_Settings" Command="{Binding ShowSettingsCommand}"/>
+                <Separator/>
+                <MenuItem Header="E_xit" Command="{Binding ExitCommand}"/>
+            </MenuItem>
+            <MenuItem Header="_Connection">
+                <MenuItem Header="_Test Relay Connection" Command="{Binding TestRelayConnectionCommand}"/>
+                <MenuItem Header="_Manage Relay Settings" Command="{Binding ManageRelaySettingsCommand}"/>
+            </MenuItem>
+            <MenuItem Header="_Help">
+                <MenuItem Header="_About" Command="{Binding ShowAboutCommand}"/>
+            </MenuItem>
+        </Menu>
+        
+        <!-- Status Bar at Bottom -->
+        <DockPanel DockPanel.Dock="Bottom" Background="#f2f2f2" Height="25">
+            <TextBlock Margin="10,5" Text="{Binding StatusMessage}" VerticalAlignment="Center"/>
+            <TextBlock Margin="10,5" Text="{Binding ConnectionStatus}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+        </DockPanel>
+        
+        <!-- Main Content Area - Split Layout -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250" MinWidth="200"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- Left Panel - Sessions and Controls -->
+            <DockPanel Grid.Column="0" Background="#e9ecef">
+                <TextBlock DockPanel.Dock="Top" Text="Support Sessions" Margin="10" FontWeight="Bold" FontSize="16"/>
+                
+                <!-- Quick Actions -->
+                <StackPanel DockPanel.Dock="Top" Margin="10,0,10,10" Spacing="5">
+                    <Button Content="Generate New Session Key" Command="{Binding GenerateSessionKeyCommand}" HorizontalAlignment="Stretch"/>
+                    <Button Content="Build Custom Client" Command="{Binding BuildCustomClientCommand}" HorizontalAlignment="Stretch"/>
+                </StackPanel>
+                
+                <Border DockPanel.Dock="Top" BorderBrush="Gray" BorderThickness="0,1,0,0" Margin="10,0"/>
+                
+                <!-- Connected Clients List -->
+                <ListBox Items="{Binding ConnectedClients}" SelectedItem="{Binding SelectedClient}" Margin="10">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,5">
+                                <TextBlock Text="{Binding DisplayName}" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding Status}" Foreground="Gray" FontSize="12"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+            
+            <!-- Right Panel - Main Session View -->
+            <TabControl Grid.Column="1" SelectedIndex="{Binding ActiveTabIndex}">
+                <!-- Dashboard Tab -->
+                <TabItem Header="Dashboard">
+                    <Grid Margin="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <StackPanel Grid.Row="0" Spacing="15" Margin="0,10">
+                            <TextBlock Text="SilentRemote Server" FontSize="22" FontWeight="Bold"/>
+                            <TextBlock Text="Server ID: " FontSize="14">
+                                <Run Text="{Binding ServerId}"/>
+                            </TextBlock>
+                            <TextBlock Text="Relay URL: " FontSize="14">
+                                <Run Text="{Binding RelayUrl}"/>
+                            </TextBlock>
+                            <Border BorderBrush="Gray" BorderThickness="0,1,0,0" Margin="0,10"/>
+                        </StackPanel>
+                        
+                        <Grid Grid.Row="1" RowDefinitions="Auto,*">
+                            <TextBlock Grid.Row="0" Text="Active Support Sessions" FontSize="16" FontWeight="Bold" Margin="0,0,0,10"/>
+                            <DataGrid Grid.Row="1" Items="{Binding SessionsTable}" AutoGenerateColumns="False" IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Session Key" Binding="{Binding SessionKey}" Width="120"/>
+                                    <DataGridTextColumn Header="Client Name" Binding="{Binding ClientName}" Width="150"/>
+                                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
+                                    <DataGridTextColumn Header="OS" Binding="{Binding OS}" Width="120"/>
+                                    <DataGridTextColumn Header="Connected Since" Binding="{Binding ConnectedSince}" Width="180"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Grid>
+                </TabItem>
+                
+                <!-- Remote Control Tab -->
+                <TabItem Header="Remote Control" IsEnabled="{Binding IsClientSelected}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <!-- Remote Control Toolbar -->
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="5" Margin="10" Background="#f8f9fa" Padding="5">
+                            <Button Content="Screen Refresh" Command="{Binding RefreshScreenCommand}"/>
+                            <Button Content="Send File" Command="{Binding SendFileCommand}"/>
+                            <Button Content="Chat" Command="{Binding OpenChatCommand}"/>
+                            <Button Content="End Session" Command="{Binding EndSessionCommand}" Foreground="Red"/>
+                        </StackPanel>
+                        
+                        <!-- Remote Screen View -->
+                        <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1" Margin="10">
+                            <Image Name="remoteScreen" Source="{Binding RemoteScreenImage}" Stretch="Uniform"/>
+                        </Border>
+                    </Grid>
+                </TabItem>
+                
+                <!-- Session Generator Tab -->
+                <TabItem Header="Web Support Portal">
+                    <Grid Margin="20">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <StackPanel Grid.Row="0" Spacing="10">
+                            <TextBlock Text="Web Support Portal" FontSize="20" FontWeight="Bold"/>
+                            <TextBlock Text="Generate a support session that clients can join by clicking a link in their web browser. The browser will automatically download and run a pre-configured client." TextWrapping="Wrap"/>
+                        </StackPanel>
+                        
+                        <Border Grid.Row="1" Background="#f8f9fa" BorderBrush="LightGray" BorderThickness="1" CornerRadius="5" Padding="20" Margin="0,20,0,0">
+                            <StackPanel Spacing="20">
+                                <StackPanel Spacing="5">
+                                    <TextBlock Text="Session Details" FontWeight="Bold"/>
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Grid.Column="0" Text="Session Name:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                        <TextBox Grid.Column="1" Text="{Binding NewSessionName}" Watermark="e.g., Support for John"/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Grid.Column="0" Text="Expiration:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                        <ComboBox Grid.Column="1" Items="{Binding ExpirationOptions}" SelectedItem="{Binding SelectedExpiration}" HorizontalAlignment="Stretch"/>
+                                    </Grid>
+                                </StackPanel>
+                                
+                                <Button Content="Generate Web Support Link" Command="{Binding GenerateWebLinkCommand}" HorizontalAlignment="Left"/>
+                                
+                                <Border BorderBrush="LightGray" BorderThickness="0,1,0,0" Margin="0,10"/>
+                                
+                                <!-- Web Link Display - Shown after generation -->
+                                <StackPanel IsVisible="{Binding IsWebLinkGenerated}" Spacing="10">
+                                    <TextBlock Text="Web Support Portal Generated" FontWeight="Bold" Foreground="Green"/>
+                                    
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="Direct Connection URL:"/>
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBox Grid.Column="0" IsReadOnly="True" Text="{Binding GeneratedWebLink}"/>
+                                            <Button Grid.Column="1" Content="Copy" Command="{Binding CopyWebLinkCommand}" Margin="5,0,0,0"/>
+                                        </Grid>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="QR Code:" FontWeight="Bold"/>
+                                        <Border Width="200" Height="200" Background="White" BorderBrush="Black" BorderThickness="1">
+                                            <Image Source="{Binding QrCodeImage}" Stretch="Uniform"/>
+                                        </Border>
+                                    </StackPanel>
+                                    
+                                    <Button Content="Send Email" Command="{Binding SendEmailCommand}" HorizontalAlignment="Left"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </TabItem>
+                
+                <!-- Client Builder Tab -->
+                <TabItem Header="Client Builder">
+                    <Grid Margin="20">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <StackPanel Grid.Row="0" Spacing="10">
+                            <TextBlock Text="Build Custom Client" FontSize="20" FontWeight="Bold"/>
+                            <TextBlock Text="Create customized client executables that can be distributed to your users. These clients will automatically connect to your server when run." TextWrapping="Wrap"/>
+                        </StackPanel>
+                        
+                        <Border Grid.Row="1" Background="#f8f9fa" BorderBrush="LightGray" BorderThickness="1" CornerRadius="5" Padding="20" Margin="0,20,0,0">
+                            <StackPanel Spacing="15">
+                                <StackPanel Spacing="5">
+                                    <TextBlock Text="Client Details" FontWeight="Bold"/>
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Grid.Column="0" Text="Client Name:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                        <TextBox Grid.Column="1" Text="{Binding ClientName}" Watermark="e.g., Support Client"/>
+                                    </Grid>
+                                </StackPanel>
+                                
+                                <StackPanel Spacing="5">
+                                    <TextBlock Text="Platform" FontWeight="Bold"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <RadioButton Content="Windows" IsChecked="{Binding IsWindowsSelected}" GroupName="Platform"/>
+                                        <RadioButton Content="macOS" IsChecked="{Binding IsMacSelected}" GroupName="Platform"/>
+                                        <RadioButton Content="Linux" IsChecked="{Binding IsLinuxSelected}" GroupName="Platform"/>
+                                    </StackPanel>
+                                </StackPanel>
+                                
+                                <Expander Header="Advanced Options" Margin="0,10,0,0">
+                                    <StackPanel Spacing="10">
+                                        <CheckBox Content="Hide window on startup" IsChecked="{Binding HideOnStartup}"/>
+                                        <CheckBox Content="Auto-start with system" IsChecked="{Binding AutoStartWithSystem}"/>
+                                        <StackPanel Spacing="5">
+                                            <TextBlock Text="Custom Relay URL:"/>
+                                            <TextBox Text="{Binding CustomRelayUrl}" Watermark="Leave blank to use default"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Expander>
+                                
+                                <Button Content="Build Client" Command="{Binding BuildCustomClientCommand}" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                                
+                                <!-- Build Progress and Result -->
+                                <ProgressBar Value="{Binding BuildProgress}" IsVisible="{Binding IsBuildInProgress}" Height="20" Margin="0,10,0,0"/>
+                                
+                                <Border IsVisible="{Binding IsBuildComplete}" BorderBrush="Green" BorderThickness="1" Background="#e6f4ea" Padding="10" Margin="0,10,0,0">
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="Build Completed Successfully" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding BuildOutputPath}" TextWrapping="Wrap"/>
+                                        <Button Content="Open Output Folder" Command="{Binding OpenOutputFolderCommand}" HorizontalAlignment="Left" Margin="0,5,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+        </Grid>
+    </DockPanel>
+</Window>

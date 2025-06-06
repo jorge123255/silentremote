@@ -1,0 +1,158 @@
+{
+  "format": 1,
+  "restore": {
+    "/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Server/SilentRemote.Server.csproj": {}
+  },
+  "projects": {
+    "/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/SilentRemote.Common.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/SilentRemote.Common.csproj",
+        "projectName": "SilentRemote.Common",
+        "projectPath": "/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/SilentRemote.Common.csproj",
+        "packagesPath": "/Users/georgeszulc/.nuget/packages/",
+        "outputPath": "/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/georgeszulc/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.3, )"
+            },
+            "System.Drawing.Common": {
+              "target": "Package",
+              "version": "[9.0.5, )"
+            },
+            "System.Net.WebSockets": {
+              "target": "Package",
+              "version": "[4.3.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.300/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Server/SilentRemote.Server.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Server/SilentRemote.Server.csproj",
+        "projectName": "SilentRemote.Server",
+        "projectPath": "/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Server/SilentRemote.Server.csproj",
+        "packagesPath": "/Users/georgeszulc/.nuget/packages/",
+        "outputPath": "/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Server/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/georgeszulc/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/SilentRemote.Common.csproj": {
+                "projectPath": "/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/SilentRemote.Common.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Avalonia": {
+              "target": "Package",
+              "version": "[11.3.1, )"
+            },
+            "Avalonia.Desktop": {
+              "target": "Package",
+              "version": "[11.3.1, )"
+            },
+            "Avalonia.ReactiveUI": {
+              "target": "Package",
+              "version": "[11.3.1, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.300/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

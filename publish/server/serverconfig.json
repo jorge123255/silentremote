@@ -1,0 +1,7 @@
+{
+  "ServerId": "silentremote-server-1",
+  "RelayUrl": "wss://relay.nextcloudcyber.com",
+  "AuthToken": "test-token",
+  "ClientBuildPath": "../../../SilentRemote.Client/SilentRemote.Client.csproj",
+  "ClientOutputPath": "clients"
+}
