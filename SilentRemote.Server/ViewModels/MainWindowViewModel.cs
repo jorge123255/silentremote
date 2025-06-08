@@ -184,9 +184,11 @@ namespace SilentRemote.Server.ViewModels
         public MainWindowViewModel()
         {
             // Initialize services
-            _clientBuilder = new ClientBuilder();
             _serverConfig = LoadServerConfig();
-            _relayService = new RelaySignalingService(_serverConfig.RelayUrl, _serverConfig.ServerId, _serverConfig.AuthToken);
+            // Initialize client builder with default paths
+            _clientBuilder = new ClientBuilder("SilentRemote.Client", "builds");
+            // Initialize relay service with web bridge URL
+            _relayService = new RelaySignalingService(_serverConfig.RelayUrl, _serverConfig.ServerId, _serverConfig.AuthToken, _serverConfig.WebBridgeUrl);
             
             // Set initial values from config
             ServerId = _serverConfig.ServerId;
@@ -229,9 +231,8 @@ namespace SilentRemote.Server.ViewModels
             {
                 ServerId = Guid.NewGuid().ToString(),
                 RelayUrl = "wss://relay.nextcloudcyber.com",
-                AuthToken = "default-token",
-                ClientProjectPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../../SilentRemote.Client"),
-                OutputDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "builds")
+                WebBridgeUrl = "http://web-bridge.nextcloudcyber.com:8443",
+                AuthToken = "default-token"
             };
         }
         
@@ -297,14 +298,11 @@ namespace SilentRemote.Server.ViewModels
                 // Get expiration time in minutes
                 int expirationMinutes = GetExpirationMinutes();
                 
-                // Generate a unique session key
-                string sessionKey = GenerateUniqueSessionKey();
+                // Create web session via web bridge
+                var sessionInfo = await _relayService.CreateWebBridgeSessionAsync(_newSessionName, expirationMinutes);
                 
-                // Register the session with the relay server
-                await _relayService.RegisterWebSessionAsync(sessionKey, _newSessionName, expirationMinutes);
-                
-                // Generate the web link using the relay URL and session key
-                string webUrl = _relayService.GetWebSessionUrl(sessionKey);
+                // Generate the web link using the session key
+                string webUrl = _relayService.GetWebSessionUrl(sessionInfo.SessionKey);
                 
                 // Update the UI
                 GeneratedWebLink = webUrl;
@@ -313,11 +311,26 @@ namespace SilentRemote.Server.ViewModels
                 // Generate QR code (placeholder for now)
                 // QrCodeImage = GenerateQrCode(webUrl);
                 
-                StatusMessage = "Web support session generated successfully";
+                StatusMessage = $"Web support session generated successfully - Session key: {sessionInfo.SessionKey}";
+                Console.WriteLine($"Web URL: {webUrl}");
             }
             catch (Exception ex)
             {
                 StatusMessage = $"Error generating web session: {ex.Message}";
+                Console.WriteLine($"Session generation error: {ex.Message}");
+                
+                // Fallback to direct relay session creation if web bridge fails
+                try {
+                    StatusMessage = "Falling back to direct relay session...";
+                    string sessionKey = GenerateUniqueSessionKey();
+                    await _relayService.RegisterWebSessionAsync(sessionKey, _newSessionName, GetExpirationMinutes());
+                    string webUrl = _relayService.GetWebSessionUrl(sessionKey);
+                    GeneratedWebLink = webUrl;
+                    IsWebLinkGenerated = true;
+                    StatusMessage = "Web support session generated via fallback method";
+                } catch (Exception fallbackEx) {
+                    StatusMessage = $"All session creation methods failed: {fallbackEx.Message}";
+                }
             }
         }
 

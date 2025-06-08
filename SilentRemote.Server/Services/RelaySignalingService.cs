@@ -10,6 +10,20 @@ using SilentRemote.Common.Models;
 namespace SilentRemote.Server.Services
 {
     /// <summary>
+    /// Represents a web support session for client downloads
+    /// </summary>
+    public class WebSessionInfo
+    {
+        public string SessionKey { get; set; }
+        public string SessionName { get; set; }
+        public string ServerId { get; set; }
+        public string RelayUrl { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+        public DateTimeOffset? ExpiresAt { get; set; }
+        public bool OneTimeSession { get; set; } = true;
+    }
+    
+    /// <summary>
     /// Service responsible for communication with the relay server for signaling and web session management
     /// </summary>
     public class RelaySignalingService
@@ -17,6 +31,7 @@ namespace SilentRemote.Server.Services
         private readonly string _relayUrl;
         private readonly string _serverId;
         private readonly string _authToken;
+        private readonly WebBridgeClient _webBridge;
         private ClientWebSocket _webSocket;
         private CancellationTokenSource _cts;
         private bool _isConnected;
@@ -24,13 +39,20 @@ namespace SilentRemote.Server.Services
         // Collection of active web sessions
         private Dictionary<string, WebSessionInfo> _activeSessions = new Dictionary<string, WebSessionInfo>();
 
-        public RelaySignalingService(string relayUrl, string serverId, string authToken)
+        public RelaySignalingService(string relayUrl, string serverId, string authToken, string webBridgeUrl = null)
         {
             _relayUrl = relayUrl;
             _serverId = serverId;
             _authToken = authToken;
             _webSocket = new ClientWebSocket();
             _cts = new CancellationTokenSource();
+            
+            // Initialize web bridge client if URL is provided
+            if (!string.IsNullOrEmpty(webBridgeUrl))
+            {
+                _webBridge = new WebBridgeClient(webBridgeUrl);
+                Console.WriteLine($"Web bridge client initialized with URL: {webBridgeUrl}");
+            }
         }
 
         /// <summary>
@@ -162,7 +184,13 @@ namespace SilentRemote.Server.Services
         /// <returns>URL that clients can use to download and run the pre-configured client</returns>
         public string GetWebSessionUrl(string sessionKey)
         {
-            // The relay server hosts a web component at /connect with the session key as a parameter
+            // If web bridge is available, use that URL
+            if (_webBridge != null)
+            {
+                return _webBridge.GetSessionUrl(sessionKey);
+            }
+            
+            // Otherwise, fall back to direct relay URL
             return $"{GetWebRelayUrl()}/connect?session={sessionKey}";
         }
         
@@ -199,59 +227,74 @@ namespace SilentRemote.Server.Services
             {
                 byte[] buffer = new byte[4096];
                 
-                while (_webSocket.State == WebSocketState.Open && !_cts.Token.IsCancellationRequested)
+                while (!_cts.Token.IsCancellationRequested)
                 {
-                    WebSocketReceiveResult result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), _cts.Token);
+                    var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), _cts.Token);
                     
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
-                        await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                        await _webSocket.CloseAsync(
+                            WebSocketCloseStatus.NormalClosure,
+                            "Closing response received",
+                            CancellationToken.None);
                         _isConnected = false;
                         break;
                     }
                     
-                    if (result.MessageType == WebSocketMessageType.Text)
-                    {
-                        string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                        ProcessMessage(message);
-                    }
+                    if (result.MessageType != WebSocketMessageType.Text)
+                        continue;
+                        
+                    // Process the message
+                    string json = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    await ProcessReceivedMessageAsync(json);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when cancellation is requested
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in WebSocket receive: {ex.Message}");
+                // Log or handle the exception
+                Console.WriteLine($"Error in WebSocket receive loop: {ex.Message}");
                 _isConnected = false;
             }
         }
 
         /// <summary>
-        /// Processes incoming messages from the relay server
+        /// Processes messages received from the relay server
         /// </summary>
-        private void ProcessMessage(string json)
+        private async Task ProcessReceivedMessageAsync(string json)
         {
             try
             {
-                dynamic message = JsonConvert.DeserializeObject(json);
-                string messageType = message?.type?.ToString();
+                // Parse the JSON to determine the message type
+                var message = JsonConvert.DeserializeAnonymousType(json, new { type = "" });
                 
-                switch (messageType)
+                switch (message.type)
                 {
-                    case "web_session_request":
-                        // A user has visited the web support URL and is requesting a client download
-                        HandleWebSessionRequest(message);
+                    case "pong":
+                        // Handle ping response
                         break;
                         
                     case "client_connected":
-                        // A client has connected through the web session
-                        HandleClientConnected(message);
+                        // Handle client connection notification
+                        var clientConnectMessage = JsonConvert.DeserializeAnonymousType(json, new 
+                        {
+                            type = "",
+                            clientId = "",
+                            sessionKey = ""
+                        });
+                        
+                        await HandleClientConnectionAsync(
+                            clientConnectMessage.clientId,
+                            clientConnectMessage.sessionKey);
                         break;
                         
-                    case "pong":
-                        // Response to our ping message
-                        break;
-                        
+                    // Handle other message types as needed
+                    
                     default:
-                        Console.WriteLine($"Unknown message type: {messageType}");
+                        Console.WriteLine($"Received unknown message type: {message.type}");
                         break;
                 }
             }
@@ -262,55 +305,12 @@ namespace SilentRemote.Server.Services
         }
 
         /// <summary>
-        /// Handles a web session download request
+        /// Handles a client connection through a web session
         /// </summary>
-        private async void HandleWebSessionRequest(dynamic message)
+        private async Task HandleClientConnectionAsync(string clientId, string sessionKey)
         {
-            string sessionKey = message.sessionKey?.ToString();
-            string clientInfo = message.clientInfo?.ToString();
-            string platform = message.platform?.ToString();
-            
-            if (string.IsNullOrEmpty(sessionKey) || !_activeSessions.ContainsKey(sessionKey))
-            {
-                Console.WriteLine($"Invalid or unknown session key: {sessionKey}");
-                return;
-            }
-            
-            try
-            {
-                // In a real implementation, we would build the client specifically for this session
-                // and provide the download URL or base64-encoded client package
-                
-                // For now, we'll just send a message back to the relay indicating success
-                var responseMessage = new
-                {
-                    type = "web_session_response",
-                    serverId = _serverId,
-                    sessionKey = sessionKey,
-                    status = "success",
-                    clientId = Guid.NewGuid().ToString(),
-                    downloadUrl = $"{GetWebRelayUrl()}/download/{sessionKey}" // This URL would be served by the relay server
-                };
-                
-                await SendMessageAsync(responseMessage);
-                
-                Console.WriteLine($"Web session request processed for session {sessionKey}, platform: {platform}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error handling web session request: {ex.Message}");
-            }
-        }
-        
-        /// <summary>
-        /// Handles notification that a client has connected through a web session
-        /// </summary>
-        private void HandleClientConnected(dynamic message)
-        {
-            string sessionKey = message.sessionKey?.ToString();
-            string clientId = message.clientId?.ToString();
-            
-            if (string.IsNullOrEmpty(sessionKey) || !_activeSessions.ContainsKey(sessionKey))
+            // Check if this is a known session
+            if (!_activeSessions.TryGetValue(sessionKey, out var sessionInfo))
             {
                 Console.WriteLine($"Client connected with invalid or unknown session key: {sessionKey}");
                 return;
@@ -320,19 +320,57 @@ namespace SilentRemote.Server.Services
             
             // In a real implementation, this would notify the UI or trigger events
         }
-    }
-
-    /// <summary>
-    /// Represents a web support session for client downloads
-    /// </summary>
-    public class WebSessionInfo
-    {
-        public string SessionKey { get; set; }
-        public string SessionName { get; set; }
-        public string ServerId { get; set; }
-        public string RelayUrl { get; set; }
-        public DateTimeOffset CreatedAt { get; set; }
-        public DateTimeOffset? ExpiresAt { get; set; }
-        public bool OneTimeSession { get; set; } = true;
+        
+        /// <summary>
+        /// Creates a web session via the web bridge
+        /// </summary>
+        /// <param name="sessionName">Optional friendly name for the session</param>
+        /// <param name="expiresInMinutes">Session expiration time in minutes</param>
+        /// <param name="oneTimeSession">Whether session is valid for one-time use only</param>
+        /// <returns>Web session information including session key and URLs</returns>
+        public async Task<WebSessionInfo> CreateWebBridgeSessionAsync(
+            string sessionName = null,
+            int expiresInMinutes = 30,
+            bool oneTimeSession = true)
+        {
+            if (_webBridge == null)
+                throw new InvalidOperationException("Web bridge client is not configured. Please provide a webBridgeUrl in the constructor.");
+            
+            try
+            {
+                Console.WriteLine("Creating web session via web bridge");
+                
+                // Use the web bridge to create the session
+                var sessionInfo = await _webBridge.CreateSessionAsync(
+                    _serverId,
+                    sessionName,
+                    expiresInMinutes,
+                    oneTimeSession);
+                
+                // Add to local collection
+                _activeSessions[sessionInfo.SessionKey] = sessionInfo;
+                
+                Console.WriteLine($"Created web session {sessionInfo.SessionKey} via bridge");
+                
+                return sessionInfo;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to create web session via bridge: {ex.Message}");
+                throw;
+            }
+        }
+        
+        /// <summary>
+        /// Checks if the web bridge is available
+        /// </summary>
+        /// <returns>True if the web bridge is reachable</returns>
+        public async Task<bool> IsWebBridgeAvailableAsync()
+        {
+            if (_webBridge == null)
+                return false;
+                
+            return await _webBridge.IsAvailableAsync();
+        }
     }
 }

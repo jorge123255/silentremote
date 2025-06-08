@@ -3,6 +3,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:SilentRemote.Server.ViewModels"
+        xmlns:controls="using:Avalonia.Controls"
+        xmlns:datagrid="using:Avalonia.Controls.DataGrid"
         mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
         x:Class="SilentRemote.Server.UI.MainWindow"
         Title="SilentRemote Server Console"
@@ -55,7 +57,13 @@
                 <Border DockPanel.Dock="Top" BorderBrush="Gray" BorderThickness="0,1,0,0" Margin="10,0"/>
                 
                 <!-- Connected Clients List -->
-                <ListBox Items="{Binding ConnectedClients}" SelectedItem="{Binding SelectedClient}" Margin="10">
+                <ListBox Margin="10">
+                    <ListBox.ItemsSource>
+                        <Binding Path="ConnectedClients"/>
+                    </ListBox.ItemsSource>
+                    <ListBox.SelectedItem>
+                        <Binding Path="SelectedClient"/>
+                    </ListBox.SelectedItem>
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Margin="0,5">
@@ -90,6 +98,9 @@
                         
                         <Grid Grid.Row="1" RowDefinitions="Auto,*">
                             <TextBlock Grid.Row="0" Text="Active Support Sessions" FontSize="16" FontWeight="Bold" Margin="0,0,0,10"/>
+                            <!-- DataGrid temporarily disabled for presentation build -->
+                            <TextBlock Grid.Row="1" Text="Data grid temporarily disabled for presentation." Margin="5" FontStyle="Italic" />
+                            <!--
                             <DataGrid Grid.Row="1" Items="{Binding SessionsTable}" AutoGenerateColumns="False" IsReadOnly="True">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Session Key" Binding="{Binding SessionKey}" Width="120"/>
@@ -99,6 +110,7 @@
                                     <DataGridTextColumn Header="Connected Since" Binding="{Binding ConnectedSince}" Width="180"/>
                                 </DataGrid.Columns>
                             </DataGrid>
+                            -->
                         </Grid>
                     </Grid>
                 </TabItem>
@@ -112,7 +124,7 @@
                         </Grid.RowDefinitions>
                         
                         <!-- Remote Control Toolbar -->
-                        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="5" Margin="10" Background="#f8f9fa" Padding="5">
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="5" Margin="10,10,10,10" Background="#f8f9fa">
                             <Button Content="Screen Refresh" Command="{Binding RefreshScreenCommand}"/>
                             <Button Content="Send File" Command="{Binding SendFileCommand}"/>
                             <Button Content="Chat" Command="{Binding OpenChatCommand}"/>
@@ -149,7 +161,14 @@
                                     </Grid>
                                     <Grid ColumnDefinitions="Auto,*">
                                         <TextBlock Grid.Column="0" Text="Expiration:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                        <ComboBox Grid.Column="1" Items="{Binding ExpirationOptions}" SelectedItem="{Binding SelectedExpiration}" HorizontalAlignment="Stretch"/>
+                                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch">
+                                            <ComboBox.ItemsSource>
+                                                <Binding Path="ExpirationOptions"/>
+                                            </ComboBox.ItemsSource>
+                                            <ComboBox.SelectedItem>
+                                                <Binding Path="SelectedExpiration"/>
+                                            </ComboBox.SelectedItem>
+                                        </ComboBox>
                                     </Grid>
                                 </StackPanel>
                                 

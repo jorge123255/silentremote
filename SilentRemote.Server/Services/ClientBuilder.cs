@@ -33,6 +33,29 @@ namespace SilentRemote.Server.Services
         }
         
         /// <summary>
+        /// Build a client with the specified configuration and a custom name
+        /// </summary>
+        /// <param name="clientName">Name for the client executable</param>
+        /// <param name="platform">Target platform (e.g. win-x64, osx-x64)</param>
+        /// <param name="config">Client configuration</param>
+        /// <param name="customProjectPath">Optional custom project path</param>
+        /// <param name="customOutputDir">Optional custom output directory</param>
+        /// <param name="progress">Progress reporter</param>
+        /// <returns>Path to the built client</returns>
+        public async Task<string> BuildClientAsync(string clientName, string platform, ClientConfig config, string customProjectPath, string customOutputDir, IProgress<int> progress)
+        {
+            // Use custom paths if provided
+            string projectPath = !string.IsNullOrEmpty(customProjectPath) ? customProjectPath : _clientProjectPath;
+            string outputDir = !string.IsNullOrEmpty(customOutputDir) ? customOutputDir : _outputDirectory;
+            
+            // Report initial progress
+            progress?.Report(5);
+            
+            // Call the main implementation
+            return await BuildClientAsyncInternal(config, platform, clientName, projectPath, outputDir, progress);
+        }
+        
+        /// <summary>
         /// Build a client with the specified configuration
         /// </summary>
         /// <param name="config">Client configuration</param>
@@ -40,13 +63,28 @@ namespace SilentRemote.Server.Services
         /// <returns>Path to the built client</returns>
         public async Task<string> BuildClientAsync(ClientConfig config, string platform = "win-x64")
         {
+            return await BuildClientAsyncInternal(config, platform, null, _clientProjectPath, _outputDirectory, null);
+        }
+        
+        /// <summary>
+        /// Internal implementation of client building
+        /// </summary>
+        private async Task<string> BuildClientAsyncInternal(ClientConfig config, string platform, string clientName = null, string projectPath = null, string outputDir = null, IProgress<int> progress = null)
+        {
+            // Use provided paths or defaults
+            string actualProjectPath = projectPath ?? _clientProjectPath;
+            string actualOutputDir = outputDir ?? _outputDirectory;
+            
             // Create unique build directory
-            string buildDir = Path.Combine(_outputDirectory, $"build_{config.ClientId}");
+            string buildDir = Path.Combine(actualOutputDir, $"build_{config.ClientId}");
             if (Directory.Exists(buildDir))
             {
                 Directory.Delete(buildDir, true);
             }
             Directory.CreateDirectory(buildDir);
+            
+            // Report progress if available
+            progress?.Report(10);
             
             // Save configuration to build directory
             string configPath = Path.Combine(buildDir, "config.json");

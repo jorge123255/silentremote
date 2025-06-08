@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using Avalonia.Diagnostics;
 using SilentRemote.Server.ViewModels;
 
 namespace SilentRemote.Server.UI
@@ -13,7 +14,7 @@ namespace SilentRemote.Server.UI
             DataContext = new MainWindowViewModel();
 
 #if DEBUG
-            this.AttachDevTools();
+            // Dev tools disabled for the presentation
 #endif
         }
 

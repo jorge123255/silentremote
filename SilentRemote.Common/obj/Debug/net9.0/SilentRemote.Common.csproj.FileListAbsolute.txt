@@ -10,3 +10,4 @@
 /Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/obj/Debug/net9.0/refint/SilentRemote.Common.dll
 /Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/obj/Debug/net9.0/SilentRemote.Common.pdb
 /Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/obj/Debug/net9.0/ref/SilentRemote.Common.dll
+/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Common/obj/Debug/net9.0/SilentRemote.Common.sourcelink.json
