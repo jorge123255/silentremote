@@ -4,6 +4,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.ReactiveUI;
 using SilentRemote.Common.Messages;
 using SilentRemote.Common.Models;
 using SilentRemote.Common.Relay.Models;
@@ -39,7 +43,37 @@ namespace SilentRemote.Server
         // Relay client for server
         private static RelayClient? _serverRelayClient;
         
+        // Build and starts the app
+        public static AppBuilder BuildAvaloniaApp()
+            => AppBuilder.Configure<App>()
+                .UsePlatformDetect()
+                .WithInterFont()
+                .LogToTrace();
+
         static async Task Main(string[] args)
+        {
+            // Check if we should run in console mode
+            if (args.Contains("--console") || args.Contains("-c"))
+            {
+                await RunConsoleMode(args);
+                return;
+            }
+            
+            // Default to GUI mode
+            try 
+            {
+                // Start the Avalonia UI application
+                BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to start UI: {ex.Message}");
+                Console.WriteLine("Falling back to console mode...");
+                await RunConsoleMode(args);
+            }
+        }
+        
+        private static async Task RunConsoleMode(string[] args)
         {
             Console.WriteLine("SilentRemote Server Starting...");
             
