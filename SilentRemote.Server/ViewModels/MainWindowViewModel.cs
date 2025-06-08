@@ -68,7 +68,7 @@ namespace SilentRemote.Server.ViewModels
             set => this.RaiseAndSetIfChanged(ref _generatedWebLink, value); 
         }
 
-        private Bitmap _qrCodeImage;
+        private Bitmap _qrCodeImage = null!;
         public Bitmap QrCodeImage 
         { 
             get => _qrCodeImage; 
@@ -134,7 +134,7 @@ namespace SilentRemote.Server.ViewModels
             set => this.RaiseAndSetIfChanged(ref _autoStartWithSystem, value); 
         }
 
-        private string _customRelayUrl;
+        private string _customRelayUrl = string.Empty;
         public string CustomRelayUrl 
         { 
             get => _customRelayUrl; 
@@ -162,7 +162,7 @@ namespace SilentRemote.Server.ViewModels
             set => this.RaiseAndSetIfChanged(ref _isBuildComplete, value); 
         }
 
-        private string _buildOutputPath;
+        private string _buildOutputPath = string.Empty;
         public string BuildOutputPath 
         { 
             get => _buildOutputPath; 
