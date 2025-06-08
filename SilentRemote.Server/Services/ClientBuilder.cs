@@ -63,13 +63,13 @@ namespace SilentRemote.Server.Services
         /// <returns>Path to the built client</returns>
         public async Task<string> BuildClientAsync(ClientConfig config, string platform = "win-x64")
         {
-            return await BuildClientAsyncInternal(config, platform, null, _clientProjectPath, _outputDirectory, null);
+            return await BuildClientAsyncInternal(config, platform, clientName: default, projectPath: _clientProjectPath, outputDir: _outputDirectory, progress: default);
         }
         
         /// <summary>
         /// Internal implementation of client building
         /// </summary>
-        private async Task<string> BuildClientAsyncInternal(ClientConfig config, string platform, string clientName = null, string projectPath = null, string outputDir = null, IProgress<int> progress = null)
+        private async Task<string> BuildClientAsyncInternal(ClientConfig config, string platform, string? clientName = null, string? projectPath = null, string? outputDir = null, IProgress<int>? progress = null)
         {
             // Use provided paths or defaults
             string actualProjectPath = projectPath ?? _clientProjectPath;
