@@ -401,18 +401,18 @@ namespace SilentRemote.Server
             Console.WriteLine();
         }
         
-        private static async Task SelectClientAsync(string clientId)
+        private static Task SelectClientAsync(string clientId)
         {
             if (string.IsNullOrWhiteSpace(clientId))
             {
                 Console.WriteLine("Please specify a client ID.");
-                return;
+                return Task.CompletedTask;
             }
             
             if (!ConnectedClients.ContainsKey(clientId))
             {
                 Console.WriteLine($"Client {clientId} not found.");
-                return;
+                return Task.CompletedTask;
             }
             
             // Update active client
@@ -420,7 +420,8 @@ namespace SilentRemote.Server
             Console.WriteLine($"Now controlling client: {clientId}");
             
             // Start screen capture for the selected client
-            _ = Task.Run(() => StartScreenCaptureLoopAsync(clientId));
+            Task.Run(() => StartScreenCaptureLoopAsync(clientId));
+            return Task.CompletedTask;
         }
         
         private static async Task BuildClientManagerAsync()
