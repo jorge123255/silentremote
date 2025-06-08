@@ -218,7 +218,14 @@ namespace SilentRemote.Server.ViewModels
                 if (File.Exists(configPath))
                 {
                     string json = File.ReadAllText(configPath);
-                    return Newtonsoft.Json.JsonConvert.DeserializeObject<ServerConfig>(json);
+                    var config = Newtonsoft.Json.JsonConvert.DeserializeObject<ServerConfig>(json);
+                    return config ?? new ServerConfig
+                    {
+                        ServerId = Guid.NewGuid().ToString(),
+                        RelayUrl = "wss://relay.nextcloudcyber.com",
+                        WebBridgeUrl = "http://web-bridge.nextcloudcyber.com:8443",
+                        AuthToken = "default-token"
+                    };
                 }
             }
             catch (Exception ex)
@@ -416,7 +423,20 @@ namespace SilentRemote.Server.ViewModels
         {
             try
             {
-                var directoryInfo = new DirectoryInfo(Path.GetDirectoryName(BuildOutputPath));
+                if (string.IsNullOrEmpty(BuildOutputPath))
+                {
+                    StatusMessage = "Output path is not set";
+                    return;
+                }
+                
+                string? dirPath = Path.GetDirectoryName(BuildOutputPath);
+                if (string.IsNullOrEmpty(dirPath))
+                {
+                    StatusMessage = "Could not determine directory path";
+                    return;
+                }
+                
+                var directoryInfo = new DirectoryInfo(dirPath);
                 if (directoryInfo.Exists)
                 {
                     // This would open the folder in the native file explorer
