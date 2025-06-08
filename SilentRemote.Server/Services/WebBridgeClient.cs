@@ -133,12 +133,12 @@ namespace SilentRemote.Server.Services
         private class WebBridgeResponse
         {
             public string SessionKey { get; set; }
-            public string SessionName { get; set; }
-            public string ServerId { get; set; }
+            public string SessionName { get; set; } = string.Empty;
+            public string ServerId { get; set; } = string.Empty;
             public long ExpiresAt { get; set; }
-            public string SessionUrl { get; set; }
-            public string RelayServer { get; set; }
-            public string RelayServerName { get; set; }
+            public string SessionUrl { get; set; } = string.Empty;
+            public string RelayServer { get; set; } = string.Empty;
+            public string RelayServerName { get; set; } = string.Empty;
         }
     }
 }
