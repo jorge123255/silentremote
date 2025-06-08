@@ -14,11 +14,11 @@ namespace SilentRemote.Server.Services
     /// </summary>
     public class WebSessionInfo
     {
-        public string SessionKey { get; set; }
-        public string SessionName { get; set; }
-        public string ServerId { get; set; }
-        public string RelayUrl { get; set; }
-        public DateTimeOffset CreatedAt { get; set; }
+        public string SessionKey { get; set; } = string.Empty;
+        public string? SessionName { get; set; }
+        public string? ServerId { get; set; }
+        public string? RelayUrl { get; set; }
+        public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
         public DateTimeOffset? ExpiresAt { get; set; }
         public bool OneTimeSession { get; set; } = true;
     }

@@ -47,7 +47,6 @@ namespace SilentRemote.Server
         public static AppBuilder BuildAvaloniaApp()
             => AppBuilder.Configure<App>()
                 .UsePlatformDetect()
-                .WithInterFont()
                 .LogToTrace();
 
         static async Task Main(string[] args)
