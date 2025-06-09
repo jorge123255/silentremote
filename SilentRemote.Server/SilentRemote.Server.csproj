@@ -19,11 +19,14 @@
     <PackageReference Include="Avalonia.Themes.Simple" Version="11.3.1" />
     <PackageReference Include="Avalonia.ReactiveUI" Version="11.3.1" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.3.1" />
+    <PackageReference Include="Avalonia.Themes.Simple" Version="11.3.1" />
   </ItemGroup>
 
   <ItemGroup>
     <None Remove="**\*.axaml" />
     <AvaloniaXaml Include="**\*.axaml" />
+    <!-- Prevent duplicate App.axaml compilation -->
+    <AvaloniaResource Remove="/App.axaml" Condition="Exists('/App.axaml')" />
   </ItemGroup>
 
 </Project>
