@@ -45,7 +45,7 @@ namespace SilentRemote.Server
         
         // Build and starts the app
         public static AppBuilder BuildAvaloniaApp()
-            => AppBuilder.Configure<App>()
+            => AppBuilder.Configure<AppMain>()
                 .UsePlatformDetect()
                 .LogToTrace();
 
