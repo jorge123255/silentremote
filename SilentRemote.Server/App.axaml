@@ -3,8 +3,8 @@
              x:Class="SilentRemote.Server.App">
   <Application.Styles>
     <!-- Basic styles for all Avalonia controls -->
-    <SimpleTheme />
+    <FluentTheme />
     <!-- DataGrid specific styles -->
-    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Simple.xaml"/>
+    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
   </Application.Styles>
 </Application>
