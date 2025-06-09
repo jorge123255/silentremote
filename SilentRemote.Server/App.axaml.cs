@@ -6,7 +6,7 @@ using SilentRemote.Server.ViewModels;
 
 namespace SilentRemote.Server
 {
-    public class App : Application
+    public class AppMain : Application
     {
         public override void Initialize()
         {

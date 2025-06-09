@@ -1,6 +1,6 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="SilentRemote.Server.App">
+             x:Class="SilentRemote.Server.AppMain">
   <Application.Styles>
     <!-- Basic styles for all Avalonia controls -->
     <FluentTheme />
