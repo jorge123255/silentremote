@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quasar Remote Support</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 20px;
+    }
+    .status {
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+    .connecting {
+      background: #fff3cd;
+      border: 1px solid #ffeeba;
+      color: #856404;
+    }
+    .connected {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+    .error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      cursor: pointer;
+      font-size: 16px;
+      border-radius: 4px;
+    }
+    button:hover {
+      background-color: #0069d9;
+    }
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    .log {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      padding: 10px;
+      margin-top: 20px;
+      height: 200px;
+      overflow-y: auto;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Quasar Remote Support</h1>
+    
+    <div id="statusContainer" class="status connecting">
+      <p id="statusText">Initializing connection...</p>
+    </div>
+    
+    <div>
+      <button id="connectButton" disabled>Connect to Support</button>
+      <button id="disconnectButton" disabled>Disconnect</button>
+    </div>
+    
+    <div class="log" id="logContainer">
+      <div id="logMessages"></div>
+    </div>
+  </div>
+
+  <script>
+    // Get session key from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionKey = urlParams.get('sessionKey');
+    
+    // Elements
+    const statusContainer = document.getElementById('statusContainer');
+    const statusText = document.getElementById('statusText');
+    const connectButton = document.getElementById('connectButton');
+    const disconnectButton = document.getElementById('disconnectButton');
+    const logMessages = document.getElementById('logMessages');
+
+    // Log function
+    function log(message) {
+      const entry = document.createElement('div');
+      entry.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+      logMessages.appendChild(entry);
+      logMessages.parentElement.scrollTop = logMessages.parentElement.scrollHeight;
+    }
+
+    // Update status
+    function updateStatus(message, type) {
+      statusText.textContent = message;
+      statusContainer.className = `status ${type}`;
+    }
+
+    // Session key validation
+    if (!sessionKey) {
+      updateStatus('Error: Missing session key', 'error');
+      log('No session key provided in URL.');
+    } else {
+      log(`Session key: ${sessionKey}`);
+      updateStatus('Validating session...', 'connecting');
+
+      // Validate session
+      fetch(`/api/session/${sessionKey}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.valid) {
+            log(`Session validated: ${data.sessionName}`);
+            updateStatus('Session validated. Ready to connect.', 'connected');
+            connectButton.disabled = false;
+            
+            // Store session info
+            window.sessionInfo = data;
+          } else {
+            updateStatus(`Error: ${data.error}`, 'error');
+            log(`Session validation failed: ${data.error}`);
+          }
+        })
+        .catch(error => {
+          updateStatus('Error validating session', 'error');
+          log(`Session validation error: ${error.message}`);
+        });
+    }
+
+    // Connect button handler
+    connectButton.addEventListener('click', () => {
+      if (!window.sessionInfo) return;
+      
+      updateStatus('Connecting to relay server...', 'connecting');
+      log(`Connecting to relay server: ${window.sessionInfo.relayServer}`);
+      if (window.sessionInfo.relayServerName) {
+        log(`Relay server name: ${window.sessionInfo.relayServerName}`);
+      }
+      
+      // Create WebSocket connection
+      const ws = new WebSocket(window.sessionInfo.relayServer);
+      window.ws = ws;
+      
+      ws.onopen = () => {
+        log('WebSocket connection established');
+        updateStatus('Connected. Authenticating...', 'connecting');
+        
+        // Send connection message with session info
+        ws.send(JSON.stringify({
+          type: 'use_web_session',
+          sessionKey: window.sessionInfo.sessionKey
+        }));
+      };
+      
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        log(`Received: ${JSON.stringify(message)}`);
+        
+        if (message.type === 'connected') {
+          updateStatus('Connected to support session!', 'connected');
+          connectButton.disabled = true;
+          disconnectButton.disabled = false;
+        } else if (message.type === 'error') {
+          updateStatus(`Error: ${message.error}`, 'error');
+        }
+      };
+      
+      ws.onerror = (error) => {
+        log('WebSocket error');
+        updateStatus('Connection error', 'error');
+        connectButton.disabled = false;
+        disconnectButton.disabled = true;
+      };
+      
+      ws.onclose = () => {
+        log('WebSocket connection closed');
+        updateStatus('Disconnected', 'error');
+        connectButton.disabled = false;
+        disconnectButton.disabled = true;
+        window.ws = null;
+      };
+    });
+    
+    // Disconnect button handler
+    disconnectButton.addEventListener('click', () => {
+      if (window.ws) {
+        window.ws.close();
+      }
+    });
+  </script>
+</body>
+</html>

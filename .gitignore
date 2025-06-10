@@ -1,0 +1,39 @@
+# .NET build output
+bin/
+obj/
+/publish/
+/Release/
+*.user
+*.suo
+*.vs
+.vs/
+*.userprefs
+/packages/
+*.nupkg
+
+# macOS system files
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# Node.js dependencies
+node_modules/
+npm-debug.log
+
+# Environment variables and secrets
+*.env
+*.pfx
+*.key
+
+# Build files
+/build/
+/dist/
+
+# Logs
+logs/
+*.log
+
+# Generated files
+[Tt]emp/
+[Tt]mp/

@@ -196,7 +196,7 @@ namespace SilentRemote.Server.ViewModels
             
             // Initialize commands
             TestRelayConnectionCommand = ReactiveCommand.CreateFromTask(TestRelayConnectionAsync);
-            ManageRelaySettingsCommand = ReactiveCommand.Create(ManageRelaySettings);
+            ManageRelaySettingsCommand = ReactiveCommand.CreateFromTask(ManageRelaySettings);
             ShowSettingsCommand = ReactiveCommand.Create(ShowSettings);
             ExitCommand = ReactiveCommand.Create(Exit);
             ShowAboutCommand = ReactiveCommand.Create(ShowAbout);
@@ -206,8 +206,16 @@ namespace SilentRemote.Server.ViewModels
             BuildCustomClientCommand = ReactiveCommand.CreateFromTask(BuildCustomClientAsync);
             OpenOutputFolderCommand = ReactiveCommand.Create(OpenOutputFolder);
             
-            // Initialize the relay service
-            InitializeRelayServiceAsync();
+            // Set initial status
+            StatusMessage = "Initializing...";
+            ConnectionStatus = "Disconnected";
+            
+            // Proper async initialization pattern
+            Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+            {
+                await Task.Delay(100); // Short delay to ensure UI is ready
+                await InitializeRelayServiceAsync();
+            });
         }
 
         private ServerConfig LoadServerConfig()
@@ -247,15 +255,23 @@ namespace SilentRemote.Server.ViewModels
         {
             try
             {
-                StatusMessage = "Connecting to relay server...";
+                // Update UI safely on the UI thread
+                await UpdateStatusSafelyAsync("Connecting to relay server...");
+                await UpdateConnectionStatusSafelyAsync("Connecting");
+                
+                // Connect to relay service
                 await _relayService.ConnectAsync();
-                ConnectionStatus = "Connected";
-                StatusMessage = "Ready";
+                
+                // Update UI with connection status
+                await UpdateConnectionStatusSafelyAsync("Connected");
+                await UpdateStatusSafelyAsync("Ready");
             }
             catch (Exception ex)
             {
-                ConnectionStatus = "Disconnected";
-                StatusMessage = $"Error connecting to relay: {ex.Message}";
+                // Update UI with error status
+                await UpdateConnectionStatusSafelyAsync("Disconnected");
+                await UpdateStatusSafelyAsync($"Error connecting to relay: {ex.Message}");
+                Console.WriteLine($"Relay connection error: {ex.Message}");
             }
         }
         
@@ -263,20 +279,70 @@ namespace SilentRemote.Server.ViewModels
         {
             try
             {
-                StatusMessage = "Testing connection to relay server...";
+                // Use Avalonia's dispatcher to update UI properties from background threads
+                await UpdateStatusSafelyAsync("Testing connection to relay server...");
+                
+                // Run the actual connection test
                 await _relayService.TestConnectionAsync();
-                StatusMessage = "Relay connection successful";
+                
+                // Update UI with results
+                await UpdateStatusSafelyAsync("Relay connection successful");
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Relay connection failed: {ex.Message}";
+                // Update UI with error message
+                await UpdateStatusSafelyAsync($"Relay connection failed: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Safely updates status message on the UI thread
+        /// </summary>
+        private async Task UpdateStatusSafelyAsync(string message)
+        {
+            // Make sure we're on the UI thread
+            if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+            {
+                StatusMessage = message;
+            }
+            else
+            {
+                // Marshal to UI thread
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    StatusMessage = message;
+                });
+            }
+        }
+        
+        /// <summary>
+        /// Safely updates connection status on the UI thread
+        /// </summary>
+        private async Task UpdateConnectionStatusSafelyAsync(string status)
+        {
+            // Make sure we're on the UI thread
+            if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+            {
+                ConnectionStatus = status;
+            }
+            else
+            {
+                // Marshal to UI thread
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    ConnectionStatus = status;
+                });
             }
         }
 
-        private void ManageRelaySettings()
+        private async Task ManageRelaySettings()
         {
             // Will be implemented with a dialog
-            StatusMessage = "Relay settings dialog will appear here";
+            await UpdateStatusSafelyAsync("Relay settings dialog will appear here");
+            
+            // TODO: Show a proper relay settings dialog
+            // This should be implemented using a proper Avalonia dialog
+            // For now, we'll just update the status message
         }
 
         private void ShowSettings()

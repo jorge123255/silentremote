@@ -12,6 +12,8 @@
           "Avalonia.Controls.DataGrid": "11.3.1",
           "Avalonia.Desktop": "11.3.1",
           "Avalonia.ReactiveUI": "11.3.1",
+          "Avalonia.Themes.Fluent": "11.3.1",
+          "Avalonia.Themes.Simple": "11.3.1",
           "SilentRemote.Common": "1.0.0"
         },
         "runtime": {
@@ -180,6 +182,28 @@
         },
         "runtime": {
           "lib/net8.0/Avalonia.Skia.dll": {
+            "assemblyVersion": "11.3.1.0",
+            "fileVersion": "11.3.1.0"
+          }
+        }
+      },
+      "Avalonia.Themes.Fluent/11.3.1": {
+        "dependencies": {
+          "Avalonia": "11.3.1"
+        },
+        "runtime": {
+          "lib/net8.0/Avalonia.Themes.Fluent.dll": {
+            "assemblyVersion": "11.3.1.0",
+            "fileVersion": "11.3.1.0"
+          }
+        }
+      },
+      "Avalonia.Themes.Simple/11.3.1": {
+        "dependencies": {
+          "Avalonia": "11.3.1"
+        },
+        "runtime": {
+          "lib/net8.0/Avalonia.Themes.Simple.dll": {
             "assemblyVersion": "11.3.1.0",
             "fileVersion": "11.3.1.0"
           }
@@ -650,6 +674,20 @@
       "sha512": "sha512-VSBecGRgd3xtBwFzWNuoSVP1gUO+BV9zX1zTUrw/ftdZKmtOe8m3VT7u2TCBvUSD6nJrSNe6JXHE585kCQFjcQ==",
       "path": "avalonia.skia/11.3.1",
       "hashPath": "avalonia.skia.11.3.1.nupkg.sha512"
+    },
+    "Avalonia.Themes.Fluent/11.3.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-3ImtHxSaG1RGk3uY3+dLoAlxrmE3Y2QzqMbIaQgsdEbFxUqKvl2m32Yg/yw00+2nrMy2KGQLL9tkbnvHPWp5OA==",
+      "path": "avalonia.themes.fluent/11.3.1",
+      "hashPath": "avalonia.themes.fluent.11.3.1.nupkg.sha512"
+    },
+    "Avalonia.Themes.Simple/11.3.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-bUr8cN1Wu9NUro/RHZZkBJdv08+KVtqSUGBMNQZLjyYhxQtgrAo5tTsqWPOjPCCKcIcH+db3VOktWlPfGvz8Fw==",
+      "path": "avalonia.themes.simple/11.3.1",
+      "hashPath": "avalonia.themes.simple.11.3.1.nupkg.sha512"
     },
     "Avalonia.Win32/11.3.1": {
       "type": "package",

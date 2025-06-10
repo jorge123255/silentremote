@@ -21,6 +21,11 @@ namespace SilentRemote.Common.Relay.Models
         Failed,
         
         /// <summary>
+        /// Connection is in the process of disconnecting
+        /// </summary>
+        Disconnecting,
+        
+        /// <summary>
         /// Connection has been disconnected
         /// </summary>
         Disconnected

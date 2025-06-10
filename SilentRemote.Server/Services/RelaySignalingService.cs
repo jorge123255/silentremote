@@ -60,13 +60,46 @@ namespace SilentRemote.Server.Services
         /// </summary>
         public async Task ConnectAsync()
         {
-            if (_isConnected)
+            // Don't try to reconnect if we're already connected
+            if (_isConnected && _webSocket != null && _webSocket.State == WebSocketState.Open)
                 return;
 
+            // Always dispose and recreate the WebSocket to ensure a clean state
+            await CleanupWebSocketAsync();
+            
             try
             {
+                // Create a new WebSocket instance
+                _webSocket = new ClientWebSocket();
+                
+                // Set up WebSocket options
+                _webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+                _webSocket.Options.SetRequestHeader("User-Agent", "SilentRemote.Server");
+                
+                // Create URI with server path
                 Uri serverUri = new Uri($"{_relayUrl}/server");
-                await _webSocket.ConnectAsync(serverUri, _cts.Token);
+                Console.WriteLine($"Connecting to relay server at {serverUri}");
+                
+                // Ensure we have a valid cancellation token
+                if (_cts == null || _cts.IsCancellationRequested)
+                {
+                    _cts?.Dispose();
+                    _cts = new CancellationTokenSource();
+                }
+                else
+                {
+                    // Reset the cancellation token
+                    _cts = new CancellationTokenSource();
+                }
+                
+                // Set a reasonable timeout
+                using (var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(15)))
+                using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token))
+                {
+                    // Attempt connection with timeout
+                    await _webSocket.ConnectAsync(serverUri, linkedCts.Token);
+                }
+                Console.WriteLine("WebSocket connected, sending authentication");
                 
                 // Send authentication message
                 var authMessage = new
@@ -77,14 +110,28 @@ namespace SilentRemote.Server.Services
                 };
                 
                 await SendMessageAsync(authMessage);
+                Console.WriteLine("Authentication message sent");
                 
-                // Start listening for messages
-                _ = ReceiveMessagesAsync();
+                // Start listening for messages in a way that won't crash the UI thread
+                var _ = Task.Run(async () => 
+                {
+                    try 
+                    {
+                        await ReceiveMessagesAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error in message receiving: {ex.Message}");
+                    }
+                });
                 
                 _isConnected = true;
+                Console.WriteLine("Successfully connected to relay server");
             }
             catch (Exception ex)
             {
+                _isConnected = false;
+                Console.WriteLine($"Connection error: {ex.Message}");
                 throw new Exception($"Failed to connect to relay server: {ex.Message}", ex);
             }
         }
@@ -94,21 +141,46 @@ namespace SilentRemote.Server.Services
         /// </summary>
         public async Task TestConnectionAsync()
         {
-            if (!_isConnected)
-                await ConnectAsync();
-                
-            // Send ping message
-            var pingMessage = new
+            try
             {
-                type = "ping",
-                serverId = _serverId,
-                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-            };
-            
-            await SendMessageAsync(pingMessage);
-            
-            // In a real implementation, we would wait for a pong response
-            // For simplicity, we're assuming the send succeeds
+                // Ensure we have a fresh WebSocket connection to avoid state issues
+                // Dispose existing connection if any
+                if (_webSocket.State != WebSocketState.None)
+                {
+                    try { _webSocket.Dispose(); } catch { /* ignore errors during cleanup */ }
+                    _webSocket = new ClientWebSocket();
+                    _isConnected = false;
+                }
+                
+                // Create new cancellation token to avoid using a potentially cancelled one
+                _cts = new CancellationTokenSource();
+                _cts.CancelAfter(TimeSpan.FromSeconds(10)); // 10 second timeout for connection test
+                
+                // Connect if not already connected
+                if (!_isConnected)
+                {
+                    await ConnectAsync();
+                }
+                
+                // Send ping message
+                var pingMessage = new
+                {
+                    type = "ping",
+                    serverId = _serverId,
+                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                };
+                
+                await SendMessageAsync(pingMessage);
+                
+                // In a real implementation, we would wait for a pong response
+                // For now, we're assuming the connection is successful if we get this far
+            }
+            catch (Exception ex)
+            {
+                // Reset connection state on any error
+                _isConnected = false;
+                throw new Exception($"Relay connection test failed: {ex.Message}", ex);
+            }
         }
 
         /// <summary>
@@ -124,8 +196,7 @@ namespace SilentRemote.Server.Services
             if (_webSocket.State == WebSocketState.Open)
                 await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Disconnect requested", CancellationToken.None);
                 
-            _webSocket.Dispose();
-            _webSocket = new ClientWebSocket();
+            await CleanupWebSocketAsync();
             _cts = new CancellationTokenSource();
             _isConnected = false;
         }
@@ -213,9 +284,44 @@ namespace SilentRemote.Server.Services
         /// </summary>
         private async Task SendMessageAsync(object message)
         {
-            string json = JsonConvert.SerializeObject(message);
-            byte[] buffer = Encoding.UTF8.GetBytes(json);
-            await _webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, _cts.Token);
+            if (_webSocket == null || _webSocket.State != WebSocketState.Open)
+            {
+                throw new InvalidOperationException("Cannot send message: WebSocket is not connected");
+            }
+            
+            try
+            {
+                string json = JsonConvert.SerializeObject(message);
+                byte[] buffer = Encoding.UTF8.GetBytes(json);
+                
+                // Create a new cancellation token source with a timeout to prevent hanging
+                using (var sendCts = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
+                using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, sendCts.Token))
+                {
+                    // Send with timeout protection
+                    await _webSocket.SendAsync(
+                        new ArraySegment<byte>(buffer), 
+                        WebSocketMessageType.Text, 
+                        true, // endOfMessage
+                        linkedCts.Token
+                    );
+                    
+                    Console.WriteLine($"Sent message: {message.GetType().Name}");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw new TimeoutException("Send operation timed out");
+            }
+            catch (WebSocketException wsEx)
+            {
+                _isConnected = false;
+                throw new Exception($"WebSocket error while sending message: {wsEx.Message}", wsEx);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Failed to send message: {ex.Message}", ex);
+            }
         }
 
         /// <summary>
@@ -223,41 +329,88 @@ namespace SilentRemote.Server.Services
         /// </summary>
         private async Task ReceiveMessagesAsync()
         {
+            const int bufferSize = 8192; // Larger buffer for messages
+            byte[] buffer = new byte[bufferSize];
+            
             try
             {
-                byte[] buffer = new byte[4096];
+                Console.WriteLine("Starting message receiver loop");
                 
-                while (!_cts.Token.IsCancellationRequested)
+                // Keep receiving until cancelled or connection closed
+                while (!_cts.Token.IsCancellationRequested && 
+                       _webSocket != null && 
+                       _webSocket.State == WebSocketState.Open)
                 {
-                    var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), _cts.Token);
-                    
-                    if (result.MessageType == WebSocketMessageType.Close)
+                    // Use a timeout for receive operations to prevent hanging
+                    using (var receiveCts = new CancellationTokenSource(TimeSpan.FromSeconds(30))) // 30-second timeout
+                    using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, receiveCts.Token))
                     {
-                        await _webSocket.CloseAsync(
-                            WebSocketCloseStatus.NormalClosure,
-                            "Closing response received",
-                            CancellationToken.None);
-                        _isConnected = false;
-                        break;
+                        try
+                        {
+                            WebSocketReceiveResult result = await _webSocket.ReceiveAsync(
+                                new ArraySegment<byte>(buffer), 
+                                linkedCts.Token
+                            );
+                            
+                            // Handle close message
+                            if (result.MessageType == WebSocketMessageType.Close)
+                            {
+                                Console.WriteLine("Received close message from server");
+                                try
+                                {
+                                    await _webSocket.CloseAsync(
+                                        WebSocketCloseStatus.NormalClosure,
+                                        "Closing response received",
+                                        CancellationToken.None);
+                                }
+                                catch (Exception closeEx)
+                                {
+                                    Console.WriteLine($"Error during WebSocket close: {closeEx.Message}");
+                                }
+                                
+                                _isConnected = false;
+                                break;
+                            }
+                            
+                            // Skip non-text messages
+                            if (result.MessageType != WebSocketMessageType.Text)
+                            {
+                                Console.WriteLine($"Skipping non-text message: {result.MessageType}");
+                                continue;
+                            }
+                            
+                            // Process the received text message
+                            string json = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                            Console.WriteLine($"Received message: {json.Substring(0, Math.Min(100, json.Length))}...");
+                            
+                            await ProcessReceivedMessageAsync(json);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // Just a timeout, continue receiving
+                            Console.WriteLine("Receive operation timed out, continuing...");
+                            continue;
+                        }
+                        catch (WebSocketException wsEx) 
+                        {
+                            Console.WriteLine($"WebSocket error during receive: {wsEx.Message}");
+                            _isConnected = false;
+                            break;
+                        }
                     }
-                    
-                    if (result.MessageType != WebSocketMessageType.Text)
-                        continue;
-                        
-                    // Process the message
-                    string json = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    await ProcessReceivedMessageAsync(json);
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected when cancellation is requested
             }
             catch (Exception ex)
             {
-                // Log or handle the exception
-                Console.WriteLine($"Error in WebSocket receive loop: {ex.Message}");
+                // Handle any unexpected errors
                 _isConnected = false;
+                Console.WriteLine($"Fatal error in message receiver: {ex.Message}");
+            }
+            finally
+            {
+                // Ensure we clean up connection state
+                _isConnected = false;
+                Console.WriteLine("Message receiver stopped");
             }
         }
 
@@ -371,6 +524,56 @@ namespace SilentRemote.Server.Services
                 return false;
                 
             return await _webBridge.IsAvailableAsync();
+        }
+        
+        /// <summary>
+        /// Properly cleans up the WebSocket connection
+        /// </summary>
+        private async Task CleanupWebSocketAsync()
+        {
+            _isConnected = false;
+            
+            if (_webSocket != null)
+            {
+                try
+                {
+                    // If the connection is open, try to close it gracefully
+                    if (_webSocket.State == WebSocketState.Open)
+                    {
+                        // Use a short timeout for the close operation
+                        using (var closeCts = new CancellationTokenSource(TimeSpan.FromSeconds(3)))
+                        {
+                            try
+                            {
+                                await _webSocket.CloseAsync(
+                                    WebSocketCloseStatus.NormalClosure,
+                                    "Closing connection for retry",
+                                    closeCts.Token);
+                                    
+                                Console.WriteLine("WebSocket closed gracefully");
+                            }
+                            catch (Exception ex)
+                            {
+                                // Log but continue - we'll dispose anyway
+                                Console.WriteLine($"Error during WebSocket close: {ex.Message}");
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                    // Always dispose regardless of close success
+                    try
+                    { 
+                        _webSocket.Dispose();
+                        _webSocket = null;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error disposing WebSocket: {ex.Message}");
+                    }
+                }
+            }
         }
     }
 }

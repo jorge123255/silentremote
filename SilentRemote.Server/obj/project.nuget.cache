@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "f5GnLQ9wdTw=",
+  "dgSpecHash": "hzcLC0OVOw0=",
   "success": true,
   "projectFilePath": "/Users/georgeszulc/Desktop/Projects 2024/SilentRemote/SilentRemote.Server/SilentRemote.Server.csproj",
   "expectedPackageFiles": [
@@ -14,6 +14,8 @@
     "/Users/georgeszulc/.nuget/packages/avalonia.reactiveui/11.3.1/avalonia.reactiveui.11.3.1.nupkg.sha512",
     "/Users/georgeszulc/.nuget/packages/avalonia.remote.protocol/11.3.1/avalonia.remote.protocol.11.3.1.nupkg.sha512",
     "/Users/georgeszulc/.nuget/packages/avalonia.skia/11.3.1/avalonia.skia.11.3.1.nupkg.sha512",
+    "/Users/georgeszulc/.nuget/packages/avalonia.themes.fluent/11.3.1/avalonia.themes.fluent.11.3.1.nupkg.sha512",
+    "/Users/georgeszulc/.nuget/packages/avalonia.themes.simple/11.3.1/avalonia.themes.simple.11.3.1.nupkg.sha512",
     "/Users/georgeszulc/.nuget/packages/avalonia.win32/11.3.1/avalonia.win32.11.3.1.nupkg.sha512",
     "/Users/georgeszulc/.nuget/packages/avalonia.x11/11.3.1/avalonia.x11.11.3.1.nupkg.sha512",
     "/Users/georgeszulc/.nuget/packages/dynamicdata/8.4.1/dynamicdata.8.4.1.nupkg.sha512",

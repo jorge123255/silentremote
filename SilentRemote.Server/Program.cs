@@ -24,8 +24,8 @@ namespace SilentRemote.Server
         private static string ClientProjectPath = "../SilentRemote.Client/SilentRemote.Client.csproj";
         
         // Server configuration
-        private static string ServerId = Guid.NewGuid().ToString();
-        private static string RelayUrl = "wss://relay.nextcloudcyber.com";
+        private static string ServerId = "RemoteServer"; // Fixed server ID instead of random GUID
+        private static string RelayUrl = "wss://relay.nextcloudcyber.com"; // Base URL
         private static string AuthToken = string.Empty;
         
         // Connected clients
@@ -163,29 +163,288 @@ namespace SilentRemote.Server
             {
                 Console.WriteLine("Connecting to relay server...");
                 
-                _serverRelayClient = new RelayClient(RelayUrl, ServerId);
-                
-                // Subscribe to events
-                _serverRelayClient.StatusChanged += (sender, status) => 
+                // Initialize relay client with proper error handling
+                // Helper function to generate URL variations for a base URL
+                List<string> GenerateUrlVariations(string baseUrl)
                 {
-                    Console.WriteLine($"Relay connection status: {status}");
+                    // Parse the URL to get components
+                    Uri uri;
+                    try {
+                        uri = new Uri(baseUrl);
+                    } catch {
+                        return new List<string> { baseUrl }; // Can't parse, just return original
+                    }
+                    
+                    var result = new List<string>();
+                    var host = uri.Host;
+                    var scheme = uri.Scheme;
+                    var port = uri.Port;
+                    
+                    // Base URL with explicit paths
+                    var paths = new[] { "", "/", "/server", "/signaling" };
+                    
+                    // Try multiple protocol + port combinations
+                    foreach (var protocol in new[] { "wss://", "ws://" })
+                    {
+                        foreach (var path in paths)
+                        {
+                            // Try standard port
+                            result.Add($"{protocol}{host}{path}");
+                            
+                            // Try explicit ports for WebSockets
+                            foreach (var explicitPort in new[] { 443, 8443, 8080, 80 })
+                            {
+                                result.Add($"{protocol}{host}:{explicitPort}{path}");
+                            }
+                        }
+                    }
+                    
+                    return result;
+                }
+                
+                // Get the selected relay URL - try multiple connection options
+                // Log which URLs we're trying to use for diagnostics
+                Console.WriteLine("Attempting to connect to relay server with multiple URL options...");
+                
+                // Allow overriding the relay URL with a command line or config option
+                // RelayUrl = "ws://localhost:8080"; // Uncomment to override with a specific URL
+                
+                // Direct connections to containers - try both dev and production container names
+                var directContainerUrls = new List<string>
+                {
+                    // Development container connections
+                    "ws://localhost:8080", // Docker port mapping (most reliable)
+                    "ws://127.0.0.1:8080", // Alternative localhost IP
+                    "ws://quasar-signaling:8080", // Development container name
+                    
+                    // Production container names (from docker-compose.production.yml)
+                    "ws://quasar-relay-1:8080", // Production container name 1
+                    "ws://quasar-relay-2:8080", // Production container name 2
+                    "ws://relay_backend:8080", // Production upstream name
+                    
+                    // Service names (as defined in docker-compose files)
+                    "ws://signaling:8080", // Service name from docker-compose.yml
+                    
+                    // Fallbacks to web-bridge connections
+                    "ws://localhost:8443", // Web bridge port mapping
+                    "ws://quasar-web-bridge:3000", // Web bridge container
+                    
+                    // NGINX proxy routes - both http and https
+                    "ws://localhost:80/", // Root WebSocket path
+                    "ws://localhost:80/ws", // Legacy WebSocket path
+                    "wss://localhost:443/", // HTTPS root path
+                    "wss://localhost:443/ws", // HTTPS legacy path
+                    
+                    // Full domain-based URLs
+                    "wss://relay.nextcloudcyber.com", // Production domain with WSS
+                    "ws://relay.nextcloudcyber.com" // Without encryption
                 };
                 
-                _serverRelayClient.ConnectionRequestReceived += async (sender, request) => 
+                // Generate URL variations from the base relay URL
+                var baseRelayUrls = new List<string>
                 {
-                    Console.WriteLine($"Connection request received from: {request.RequesterId}");
-                    await AcceptClientConnection(request);
+                    RelayUrl, // User configured URL
+                    "wss://relay.nextcloudcyber.com", // Primary relay URL
+                    "ws://relay.nextcloudcyber.com" // Backup non-secure URL
                 };
                 
-                bool connected = await _serverRelayClient.ConnectAsync();
+                // Start with direct connections first
+                var urlsToTry = new List<string>(directContainerUrls);
+                
+                // Then add variations for all base URLs
+                foreach (var baseUrl in baseRelayUrls)
+                {
+                    urlsToTry.AddRange(GenerateUrlVariations(baseUrl));
+                }
+                
+                // Add IP-based URLs as fallback
+                urlsToTry.AddRange(new[]
+                {
+                    // From the user's Docker information - direct container access
+                    "ws://localhost:8080",  // quasar-signaling
+                    "ws://f6a28bde0a24:8080", // container ID for signaling
+                    "ws://quasar-signaling:8080", // docker service name
+                    "ws://localhost:8443", // quasar-web-bridge
+                    "ws://a1b074877e60:3000", // container ID and internal port for web-bridge
+                    "ws://quasar-web-bridge:3000" // docker service name and internal port
+                });
+                
+                // Remove duplicates while preserving order
+                urlsToTry = urlsToTry.Distinct().ToList();
+                Console.WriteLine($"Generated {urlsToTry.Count} URL variants to try");
+                foreach (var url in urlsToTry.Take(5))
+                {
+                    Console.WriteLine($"  URL option: {url}");
+                }
+                
+                RelayClient? relayClient = null;
+                bool connected = false;
+                Exception? lastException = null;
+                
+                // Try each URL with retries
+                foreach (string url in urlsToTry)
+                {
+                    if (connected) break;
+                    
+                    Console.WriteLine($"Trying to connect using URL: {url}");
+                    
+                    // Make sure to dispose any previous client
+                    if (relayClient != null)
+                    {
+                        try 
+                        { 
+                            relayClient.Dispose(); 
+                            relayClient = null; 
+                        } 
+                        catch (Exception ex) 
+                        { 
+                            Console.WriteLine($"Error disposing relay client: {ex.Message}"); 
+                        }
+                    }
+                    
+                    // Create a fresh client for each URL
+                    relayClient = new RelayClient(url, ServerId);
+                    
+                    // Setup event handlers
+                    EventHandler<ConnectionStatus>? statusHandler = null;
+                    EventHandler<ConnectionRequestMessage>? requestHandler = null;
+                    
+                    statusHandler = (sender, status) => 
+                    {
+                        Console.WriteLine($"Server relay connection status: {status}");
+                        
+                        if (status == ConnectionStatus.Connected)
+                        {
+                            try
+                            {
+                                Console.WriteLine("Successfully connected to relay server and updated status");
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Error updating UI with connection status: {ex.Message}");
+                            }
+                        }
+                    };
+                    
+                    requestHandler = async (sender, request) => 
+                    {
+                        Console.WriteLine($"Connection request received from: {request.RequesterId}");
+                        await AcceptClientConnection(request);
+                    };
+                    
+                    relayClient.StatusChanged += statusHandler;
+                    relayClient.ConnectionRequestReceived += requestHandler;
+                    
+                    // Try to connect with multiple attempts and smarter backoff
+                    int maxRetries = 5; // Increased from 3 to 5 for more patience
+                    Random jitter = new Random();
+                    
+                    for (int i = 0; i < maxRetries; i++)
+                    {
+                        try
+                        {
+                            Console.WriteLine($"Connection attempt {i+1} of {maxRetries} to {url}");
+                            
+                            // Set WebSocket options if available (through constructor or property)
+                            try
+                            {
+                                // We may need to modify RelayClient to expose these options
+                                // This is a conceptual placeholder that would need proper implementation
+                                // relayClient.SetWebSocketOptions(5000, true);  // 5 sec timeout, keep alive
+                            }
+                            catch (Exception optEx)
+                            {
+                                Console.WriteLine($"Failed to set WebSocket options: {optEx.Message}");
+                            }
+                            
+                            // Connect with timeout
+                            using (var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
+                            {
+                                var connectTask = relayClient.ConnectAsync();
+                                var completedTask = await Task.WhenAny(connectTask, Task.Delay(30000, timeoutCts.Token));
+                                
+                                if (completedTask == connectTask)
+                                {
+                                    // Connection attempt completed (success or failure)
+                                    connected = await connectTask; // Get the result
+                                }
+                                else
+                                {
+                                    // Connection timed out
+                                    Console.WriteLine("Connection attempt timed out after 30 seconds");
+                                    connected = false;
+                                }
+                            }
+                            
+                            if (connected)
+                            {
+                                Console.WriteLine($"Successfully connected to relay server at {url}");
+                                _serverRelayClient = relayClient; // Only save the successful connection
+                                break;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Connection attempt {i+1} failed, retrying after delay...");
+                                
+                                // Clean up and create a fresh client instance for retry
+                                relayClient.Dispose();
+                                relayClient = new RelayClient(url, ServerId);
+                                relayClient.StatusChanged += statusHandler;
+                                relayClient.ConnectionRequestReceived += requestHandler;
+                                
+                                // Exponential backoff with jitter to prevent thundering herd
+                                int baseDelay = 1000; // 1 second base
+                                int maxDelay = 30000; // 30 seconds max
+                                int exponentialDelay = Math.Min(maxDelay, baseDelay * (int)Math.Pow(2, i));
+                                int jitterDelay = jitter.Next(-(exponentialDelay / 4), exponentialDelay / 4);
+                                int totalDelay = exponentialDelay + jitterDelay;
+                                
+                                Console.WriteLine($"Waiting {totalDelay/1000.0:F1} seconds before retry {i+2}...");
+                                await Task.Delay(totalDelay);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            lastException = ex;
+                            Console.WriteLine($"Connection attempt {i+1} error: {ex.Message}");
+                            
+                            // Clean up and create a fresh client instance for retry
+                            try
+                            {
+                                relayClient.Dispose();
+                            }
+                            catch (Exception disposeEx)
+                            {
+                                Console.WriteLine($"Error during client dispose: {disposeEx.Message}");
+                            }
+                            
+                            relayClient = new RelayClient(url, ServerId);
+                            relayClient.StatusChanged += statusHandler;
+                            relayClient.ConnectionRequestReceived += requestHandler;
+                            
+                            // Exponential backoff with jitter for exceptions too
+                            int baseDelay = 2000; // 2 second base for exceptions
+                            int maxDelay = 30000; // 30 seconds max
+                            int exponentialDelay = Math.Min(maxDelay, baseDelay * (int)Math.Pow(2, i));
+                            int jitterDelay = jitter.Next(-(exponentialDelay / 4), exponentialDelay / 4);
+                            int totalDelay = exponentialDelay + jitterDelay;
+                            
+                            Console.WriteLine($"Waiting {totalDelay/1000.0:F1} seconds before retry {i+2} after error...");
+                            await Task.Delay(totalDelay);
+                        }
+                    }
+                }
                 
                 if (!connected)
                 {
-                    Console.WriteLine("Failed to connect to relay server. Please check your network connection and relay URL.");
+                    string errorMessage = lastException != null ? 
+                        $"Failed to connect to relay server: {lastException.Message}" :
+                        "Failed to connect to relay server after multiple attempts";
+                    Console.WriteLine(errorMessage);
                     return;
                 }
                 
-                Console.WriteLine("Connected to relay server.");
+                Console.WriteLine("Connected to relay server successfully");
                 Console.WriteLine("Server is ready to accept client connections.");
             }
             catch (Exception ex)

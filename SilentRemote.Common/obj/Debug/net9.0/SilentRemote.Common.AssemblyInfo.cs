@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SilentRemote.Common")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c127cd179e320774cb6fd1647c15524e3e965c88")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cd4d9de182b701eabc9f1f21b430afd42e4e2ded")]
 [assembly: System.Reflection.AssemblyProductAttribute("SilentRemote.Common")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SilentRemote.Common")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

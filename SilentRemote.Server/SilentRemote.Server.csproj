@@ -5,7 +5,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,13 +22,22 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- First: Remove all AXAML from all item groups -->
     <None Remove="**\*.axaml" />
     <AvaloniaXaml Remove="**\*.axaml" />
-    <!-- Explicit includes to prevent duplication -->
-    <AvaloniaXaml Include="App.axaml" />
-    <AvaloniaXaml Include="UI\**\*.axaml" />
-    <AvaloniaResource Remove="/App.axaml" Condition="Exists('/App.axaml')" />
-    <AvaloniaResource Remove="App.axaml" Condition="Exists('App.axaml')" />
+    <AvaloniaResource Remove="**\*.axaml" />
+    
+    <!-- Then: Explicitly include each file with its correct build action -->
+    <AvaloniaXaml Include="App.axaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </AvaloniaXaml>
+    
+    <AvaloniaXaml Include="UI\**\*.axaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </AvaloniaXaml>
   </ItemGroup>
 
 </Project>
